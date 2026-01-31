@@ -1,0 +1,48 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create(config('datastore.table_name', 'data_stores'), function (Blueprint $table) {
+            $table->id();
+            
+            // Polymorphic relationship (nullable for global storage)
+            $table->string('storable_type')->nullable()->index();
+            $table->unsignedBigInteger('storable_id')->nullable()->index();
+            
+            $table->string('namespace', 200)->nullable()->index();
+            $table->string('key', 300);
+            $table->json('value');
+            $table->timestamp('expires_at')->nullable()->index();
+            $table->timestamps();
+
+            // Composite unique index for storable + namespace + key
+            $table->unique(['storable_type', 'storable_id', 'namespace', 'key'], 'data_stores_unique');
+            
+            // Index for cleanup of expired entries
+            $table->index(['expires_at', 'created_at']);
+            
+            // Index for namespace queries
+            $table->index(['namespace', 'key']);
+            
+            // Composite index for polymorphic queries
+            $table->index(['storable_type', 'storable_id', 'namespace']);
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists(config('datastore.table_name', 'data_stores'));
+    }
+};
