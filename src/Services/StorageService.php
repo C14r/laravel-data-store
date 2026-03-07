@@ -43,7 +43,6 @@ class StorageService
             if (!$user) {
                 throw new \RuntimeException('No authenticated user found.');
             }
-
         }
         $userInstance = $user instanceof Model ? $user : app(config('auth.providers.users.model'))->findOrFail($user);
 
@@ -85,7 +84,7 @@ class StorageService
     /**
      * Set the namespace.
      */
-    public function inNamespace(string|array $namespace): static
+    public function inNamespace(string|array|null $namespace): static
     {
         return new static($this->storable, $this->normalizeNamespace($namespace));
     }
@@ -93,7 +92,7 @@ class StorageService
     /**
      * Normalize namespace input.
      */
-    protected function normalizeNamespace(string|array $namespace): ?string
+    protected function normalizeNamespace(string|array|null $namespace): ?string
     {
         if ($namespace === null || $namespace === '') return null;
         if (is_array($namespace)) return implode('.', array_filter($namespace));
@@ -116,7 +115,7 @@ class StorageService
     {
         $key = $this->normalizeKey($key);
         $expiresAt = $ttlSeconds ? now()->addSeconds($ttlSeconds) : null;
-        
+
         // Auto-convert Spatie Data objects to array
         if (is_object($value) && method_exists($value, 'toArray') && is_a($value, 'Spatie\LaravelData\Data')) {
             $value = $value->toArray();
@@ -124,7 +123,7 @@ class StorageService
 
         // Check if exists for update event
         $existing = $this->buildBaseQuery()->where('key', $key)->first();
-        
+
         $dataStore = DataStore::updateOrCreate(
             [
                 'storable_type' => $this->getStorableType(),
@@ -170,7 +169,7 @@ class StorageService
         $key = $this->normalizeKey($key);
         $storage = $this->buildBaseQuery()->where('key', $key)->notExpired()->first();
         $value = $storage?->value ?? $default;
-        
+
         // Auto-convert to Spatie Data object if 'as' parameter provided
         if ($as !== null && $value !== null && $value !== $default) {
             if (class_exists($as) && method_exists($as, 'from')) {
@@ -181,7 +180,7 @@ class StorageService
                 }
             }
         }
-        
+
         return $value;
     }
 
@@ -199,7 +198,7 @@ class StorageService
     public function collection(string|array $key, string $class, mixed $default = []): mixed
     {
         $value = $this->get($key, $default);
-        
+
         if ($value === $default) {
             return $default;
         }
@@ -222,7 +221,7 @@ class StorageService
     public function has(string|array $key): bool
     {
         $key = $this->normalizeKey($key);
-        
+
         return $this->buildBaseQuery()->where('key', $key)->notExpired()->exists();
     }
 
@@ -233,7 +232,7 @@ class StorageService
     {
         $key = $this->normalizeKey($key);
         $storage = $this->buildBaseQuery()->where('key', $key)->first();
-        
+
         if (!$storage) {
             return false;
         }
@@ -295,7 +294,7 @@ class StorageService
     public function keysStartingWith(string|array $prefix): array
     {
         $prefix = $this->normalizeKey($prefix);
-        
+
         return $this->buildBaseQuery()->where('key', 'LIKE', $prefix . '%')->notExpired()->pluck('key')->toArray();
     }
 
@@ -427,7 +426,7 @@ class StorageService
      */
     public function setMany(array $values, ?int $ttlSeconds = null): void
     {
-        DB::transaction(function() use ($values, $ttlSeconds) {
+        DB::transaction(function () use ($values, $ttlSeconds) {
             foreach ($values as $key => $value) {
                 $this->set($key, $value, $ttlSeconds);
             }
@@ -441,7 +440,7 @@ class StorageService
     {
         $normalizedKeys = array_map(fn($key) => $this->normalizeKey($key), $keys);
         $entries = $this->buildBaseQuery()->whereIn('key', $normalizedKeys)->get();
-        
+
         $deleted = $this->buildBaseQuery()->whereIn('key', $normalizedKeys)->delete();
 
         // Dispatch events for each deleted entry
@@ -505,15 +504,15 @@ class StorageService
     public function query(): DataStoreQueryBuilder
     {
         $builder = new DataStoreQueryBuilder();
-        
+
         if ($this->storable) {
             $builder->for($this->storable);
         }
-        
+
         if ($this->namespace) {
             $builder->inNamespace($this->namespace);
         }
-        
+
         return $builder;
     }
 
@@ -535,7 +534,7 @@ class StorageService
         } else {
             $query->whereNull('namespace');
         }
-        
+
         return $query;
     }
 
